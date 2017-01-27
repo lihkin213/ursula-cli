@@ -176,6 +176,28 @@ def _run_module(inventory, module, module_args, module_hosts='all',
     proc.communicate()[0]
     return proc.returncode
 
+def _overlay_git_repos(gilt_config='gilt.yml'):
+    print "**************************************************************"
+    print "Starting Overlay using gilt."
+
+    if not os.path.isfile(gilt_config):
+        LOG.warn("Skipping overlay - gilt config file is missing.")
+        print "gilt config file  can be specified using --ursula-gilt-overlay."
+        print "See  ursuala --help for details"
+        return
+    
+    command = [ 'gilt', '--config', gilt_config, 'overlay']
+
+    proc = subprocess.Popen(command, env=os.environ.copy(), shell=False,
+                            stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE)
+    stdout = proc.communicate()[0]
+    if proc.returncode != 0:
+        LOG.warn("Overlay failed: gilt configuration file is incorrect.")
+    else:
+        LOG.info(stdout)
+    print "**************************************************************"
+    return proc.returncode
 
 def _vagrant_ssh_config(environment, boxes):
     rel_ssh_config_file = os.path.join(environment, ".ssh_config")
@@ -503,6 +525,12 @@ def run(args, extra_args):
     if args.adhoc:
         args.module = "shell"
         args.module_args = args.adhoc
+
+    if not args.ursula_gilt_overlay:
+        _overlay_git_repos()
+    else:
+        _overlay_git_repos(gilt_config=args.ursula_gilt_overlay)
+
     if args.module:
         if not args.module_args:
             raise Exception(
@@ -566,6 +594,8 @@ def parse_args():
                         help='Provision environment in vagrant')
     parser.add_argument('--ursula-sudo', action='store_true',
                         help='Enable sudo')
+    parser.add_argument('--ursula-gilt-overlay',
+                        help='location of gilt config file')
     return parser.parse_known_args()
 
 
